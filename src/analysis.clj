@@ -60,7 +60,7 @@
      :binds-out [?x-name ?y-name]}],
    :phase 0}
 
-  {:sched (((or-join [?x ?y]))), ; this appears to be part of sgc in the first phase?
+  {:sched (((or-join [?x ?y]))), ; Or-join for phase 1
    :clauses
    [{:clause (or-join [?x ?y]),
      :rows-in 0,
@@ -127,19 +127,25 @@
      :expansion 4}],
    :phase 2}
 
-  {:sched (((or-join [?x ?y]))), ; ??? not sure where we're coming from
+  ;; Now that we've invoked `sgc`, phases are not necessarily sequential, as
+  ;; there is recursion and branching at `or`s.
+  
+  {:sched (((or-join [?x ?y]))),
+   ;; This repeats phase 1 and so appears to likely be partially-bound variables
+   ;; from prior iterations. (The recursion engine is shining through.)
    :clauses
    [{:clause (or-join [?x ?y]),
-     :rows-in 4, ; ??? which 4 x bindings do we receive? abcf (leaves)?
-     :rows-out 6, ; ??? not clear which rows-in this is piped to
-     :binds-in (?x), ; ??? why is y not already bound?
+     :rows-in 4,    
+     :rows-out 6,
+     :binds-in (?x),
      :binds-out [?x ?y],
      :expansion 2}],
    :phase 3}
 
-  {:sched ; ??? not sure where this is coming from
-   ;; The rows-in doesn't match previous phase.
-   ;; Phase 13 is a likely candidate.
+  ;; Phases 5-9 are like 3 in that they repeat earlier phases. Here, the datalog
+  ;; engine is propagating `sgc` rows.
+  
+  {:sched
    (([?x :person/name _] [?y :person/name _] [(= ?x ?y)])
     ([?x1 :parent/of ?x] (sgc ?x1 ?y1) [?y1 :parent/of ?y])),
    :clauses
@@ -174,8 +180,7 @@
      :expansion 2}],
    :phase 4}
   
-  {:sched ; Why are we revisiting our original query clauses?
-   ;; This phase is identical to phase 0.
+  {:sched ; identical to phase 0
    (((sgc ?x ?y) [?x :person/name ?x-name] [?y :person/name ?y-name])),
    :clauses
    [{:clause (sgc ?x ?y),
